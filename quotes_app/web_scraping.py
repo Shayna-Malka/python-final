@@ -25,7 +25,7 @@ def scrape(parameters =""):
         tags_info = row.find("meta", class_="keywords")
         tags = tags_info["content"].split(",")
         # print(quote, author, tags)
-        quotes.append((quote, author, tags)) # store quote info in list
+        quotes.append((quote, author, ", ".join(tags))) # store quote info in list
     return quotes
 
 # if __name__ == "__main__":

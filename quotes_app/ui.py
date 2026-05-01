@@ -42,7 +42,7 @@ st.write("Is there a tag you think is missing and want to see more of?")
 
 with st.form("add_tags_form"):
     #new_tags = st.multiselect("Select additional categories to see quotes of them", #method to fetch tags and s)
-    search = st.form_submit_button("Add tags to slect in table") 
+    search = st.form_submit_button("Add tags to select in table") 
     # if submitted:
         #quote_categories.append(new_tags)
         #reload page
@@ -50,7 +50,9 @@ with st.form("add_tags_form"):
 st.header("Tag Distribution")
 st.subheader("Current Distribution")
 #  using plotly import to display chart
-amounts = st.session_state.df["Tags"].value_counts()
+tags_series = st.session_state.df["Tags"].str.split(",")
+amounts = tags_series.explode().value_counts()
+# amounts = st.session_state.df["Tags"]..value_counts()
 chart = pe.pie(names=amounts.index, values=amounts.values)
 st.plotly_chart(chart)
 # most common quote tag - using pandas import functions

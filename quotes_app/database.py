@@ -1,11 +1,15 @@
 import sqlite3
+from web_scraping import scrape
+
+def main():
+    create_database()
 
 def create_database():
     with sqlite3.connect("quotes.db") as conn:  # connect to database and automatically close connection
         cur = conn.cursor()  # create cursor
 
         # create quotes table
-        # cur.execute("DROP TABLE IF EXISTS quotes")
+        cur.execute("DROP TABLE IF EXISTS quotes")
         cur.execute("""  
         CREATE TABLE IF NOT EXISTS quotes (
             quote TEXT NOT NULL,
@@ -13,13 +17,20 @@ def create_database():
             tags TEXT NOT NULL
         )
         """)
-        # add guests to table :)
-        quotes = [
-            ("You are amazing", "Chaya", "Inspiration"),
-            ("Smile - it's free!", "Batya", "Inspiration"),
-            ("Emes", "Moshe", "Truth"),
-            ("The tough get going when the going gets tough", "Rabbi M", "Inspirational"),
-        ]
+        # add quotes to table :)
+        quotes = scrape("tag/inspirational/")
+        # quotes = [
+        #     ("You are amazing", "Chaya", "Inspiration"),
+        #     ("Smile - it's free!", "Batya", "Inspiration"),
+        #     ("Emes", "Moshe", "Truth"),
+        #     ("The tough get going when the going gets tough", "Rabbi M", "Inspirational"),
+        # ]
+        print(len(quotes))
+        for quote, author, tags in quotes:
+            print("Quote:", quote)
+            print("Author:", author)
+            print("Tags:", tags)
+
         cur.executemany("INSERT INTO quotes VALUES (?, ?, ?)", quotes)
         conn.commit()
         # extract guests from database
@@ -28,3 +39,6 @@ def create_database():
 
     # for row in rows: check values were retireved correctly
     #     print(row)
+
+if __name__ == "__main__":
+    main()
