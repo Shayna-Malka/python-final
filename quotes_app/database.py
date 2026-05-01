@@ -5,8 +5,8 @@ def create_database():
         cur = conn.cursor()  # create cursor
 
         # create quotes table
-        cur.execute("DROP TABLE IF EXISTS quotes")
-        cur.execute("""
+        # cur.execute("DROP TABLE IF EXISTS quotes")
+        cur.execute("""  
         CREATE TABLE IF NOT EXISTS quotes (
             quote TEXT NOT NULL,
             author TEXT NOT NULL,
