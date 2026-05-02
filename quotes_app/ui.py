@@ -37,6 +37,7 @@ st.write("You selected:", ", ".join(options)) # in database create database of s
 st.subheader("Quotes")
 st.dataframe(st.session_state.df, hide_index=True)
 
+
 st.header("Add a Tag")
 st.write("Is there a tag you think is missing and want to see more of?")
 
@@ -50,15 +51,15 @@ with st.form("add_tags_form"):
 st.header("Tag Distribution")
 st.subheader("Current Distribution")
 #  using plotly import to display chart
-tags_series = st.session_state.df["Tags"].str.split(",")
+tags_series = st.session_state.df["Tags"].str.split(", ")
 amounts = tags_series.explode().value_counts()
 # amounts = st.session_state.df["Tags"]..value_counts()
 chart = pe.pie(names=amounts.index, values=amounts.values)
 st.plotly_chart(chart)
 # most common quote tag - using pandas import functions
 counts = st.session_state.df["Tags"].value_counts()
-st.write("Most common tag: ", counts.idxmax())
-st.write("Number of most common tag: ", str(counts.max()))
+st.write("Most common tag: ", amounts.idxmax())
+st.write("Number of most common tag: ", str(amounts.max()))
 
 st.header("Search For Quotes by an Author")
 with st.form("search_author_form"):

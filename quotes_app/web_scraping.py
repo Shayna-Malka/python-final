@@ -19,7 +19,7 @@ def scrape(parameters =""):
     for row in rows:
         # extract quote details
         quote = row.find("span", class_="text").get_text() 
-        if (len(quote)>250): # skip very long quotes 
+        if (len(quote)>100): # skip very long quotes 
             continue
         author = row.find("small", class_="author").get_text()
         tags_info = row.find("meta", class_="keywords")

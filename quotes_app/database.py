@@ -19,12 +19,7 @@ def create_database():
         """)
         # add quotes to table :)
         quotes = scrape("tag/inspirational/")
-        # quotes = [
-        #     ("You are amazing", "Chaya", "Inspiration"),
-        #     ("Smile - it's free!", "Batya", "Inspiration"),
-        #     ("Emes", "Moshe", "Truth"),
-        #     ("The tough get going when the going gets tough", "Rabbi M", "Inspirational"),
-        # ]
+        # quotes.append("tag/")
         print(len(quotes))
         for quote, author, tags in quotes:
             print("Quote:", quote)
