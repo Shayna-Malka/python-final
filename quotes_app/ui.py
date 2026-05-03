@@ -1,24 +1,28 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as pe
-from database import create_database, add_to_database
+from database import create_database, add_tags_to_database, extract_data_from_db, add_data_to_database
 from web_scraping import scrape
 from api import api_request_random_quote
+import time
 # from openai import OpenAI
 # from openai import AzureOpenAI
 
 st.set_page_config(layout="wide")
-if "quote_categories" not in st.session_state:
+if "quote_categories" not in st.session_state: 
+    # default categories for quotes - user can add to them
     st.session_state.quote_categories = ["truth","inspirational", "life", "friendship", "courage"]
 create_database()
-rows = add_to_database(st.session_state.quote_categories)
+add_tags_to_database(st.session_state.quote_categories)
+add_data_to_database()
+
 if "random_quote" not in st.session_state:
     st.session_state.random_quote = api_request_random_quote()
 st.header("💬 Quotes App and Chatbot")
 # form to show quote
 st.subheader("Quote You Might Not Have Seen")
 with st.form("display_random_quote"):
-    # get quote - display "quote" - author name # call method from database
+    # get quote - display "quote" and author name - call method from database
     random_quote = st.session_state.random_quote
     st.subheader(f'"{st.session_state.random_quote["quote"]}"') 
     st.write(f"-{st.session_state.random_quote["author"]}")
@@ -28,20 +32,20 @@ with st.form("display_random_quote"):
 
 
 # initialise table in session_state if not already initialised - so only does once
-if "df" not in st.session_state:
-    st.session_state.df = pd.DataFrame(rows, columns=["Quote", "Author", "Tags"])
+# if "df" not in st.session_state:
 
-# if "options" not in st.session_state:
-st.session_state.options = st.multiselect(
+
+st.session_state.options_selected = st.multiselect(
     "Select quote categories",
     [q.capitalize() for q in st.session_state.quote_categories],
     default=[q.capitalize() for q in st.session_state.quote_categories],
     on_change=None # change
 )
 # chosen_categories = for cat in options. 
-st.write("You selected:", ", ".join(st.session_state.options)) # in database create database of selected category
-
+st.write("You selected:", ", ".join(st.session_state.options_selected)) # in database create database of selected category
+rows = extract_data_from_db(st.session_state.options_selected)
 st.subheader("Quotes")
+st.session_state.df = pd.DataFrame(rows, columns=["Quote", "Author", "Tags"])
 st.dataframe(st.session_state.df)  #, hide_index=True)
 
 
@@ -52,17 +56,18 @@ with st.form("add_tags_form"):
     "Request a quote category",
     placeholder="e.g. comedy, failure, hope",
     help="Type a category. If it exists, you can use it to filter quotes in above table.")
-    #new_tags = st.multiselect("Select additional categories to see quotes of them", #method to fetch tags and s)
-    add = st.form_submit_button("Add Category") 
+    add = st.form_submit_button("Add Category")  # in readme: add that if category is not a lot and might be connected to other category then might not refelect change in table
     if add:
         #check if not in category already
         requested_cat = user_requested_category.lower().strip()
         if requested_cat not in st.session_state.quote_categories:
             print("NOT IN")
-            q =scrape(f"tag/{user_requested_category.lower().strip()}/")
-            if len(q)>0:
+            results, _ =scrape(f"tag/{user_requested_category.lower().strip()}/")
+            if len(results)>0:
                 st.session_state.quote_categories.append(requested_cat)
-                st.success("Category added successfully!")
+                add_tags_to_database(requested_cat)
+                st.success("Category added successfully! Please wait a few moments for page to update")
+                time.sleep(4)
                 st.rerun()
             else:
                 st.error("Sorry your category is not included as a tag in the website - please try another category")
@@ -80,7 +85,7 @@ chart = pe.pie(names=amounts.index, values=amounts.values)
 st.plotly_chart(chart)
 # most common quote tag - using pandas import functions
 counts = st.session_state.df["Tags"].value_counts()
-st.write("Most common tag: ", amounts.idxmax())
+st.write("Most common tag: ", amounts.idxmax()) # include in docs that won't change with pie chart changes
 st.write("Number of most common tag: ", str(amounts.max()))
 
 st.header("Search For Quotes by an Author")
