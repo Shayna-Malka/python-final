@@ -5,23 +5,22 @@ from database import create_databases, add_tags_to_database, extract_data_from_t
 from web_scraping import scrape
 from api import api_request_random_quote
 import time
-# from openai import OpenAI
-# from openai import AzureOpenAI
+from openai import OpenAI
+from openai import AzureOpenAI
 # explain in readme how table does not show all items in database - just a few
 # explain in readme why tag request is created - bec if refer to chart a lot of clutter so chose a few
 st.set_page_config(layout="wide")
-# st.subheader("Loading...")
+
 if "quote_categories" not in st.session_state: 
     # default categories for quotes - user can add to them
     st.session_state.quote_categories = ["truth","inspirational", "life", "friendship", "courage"]
 create_databases()
-add_tags_to_database(st.session_state.quote_categories)
 add_data_to_databases()
 
 if "random_quote" not in st.session_state:
     st.session_state.random_quote = api_request_random_quote()
 st.header("💬 Quotes App and Chatbot")
-# form to show quote
+# form to show random quote
 st.subheader("Quote You Might Not Have Seen")
 with st.form("display_random_quote"):
     # get quote - display "quote" and author name - call method from database
@@ -32,42 +31,39 @@ with st.form("display_random_quote"):
     if submitted:
         st.session_state.random_quote = api_request_random_quote()
 
-
-# initialise table in session_state if not already initialised - so only does once
-# if "df" not in st.session_state:
-
-
 st.subheader("Quotes")
+# user select type of quotes to be displayed in table
 quote_tags_or_without = st.radio(
     "Select quotes categorisation",
     ["Only categorised quotes", "Only uncategorised quotes", "All quotes"]
 )
 if quote_tags_or_without == "Only categorised quotes":
-    # st.session_state.df = pd.DataFrame(rows, columns=["Quote", "Author", "Tags"])
+    # allow user to filter quotes shown in table via tags
     st.session_state.options_selected = st.multiselect(
     "Select quote categories",
     [q.capitalize() for q in st.session_state.quote_categories],
-    default=[q.capitalize() for q in st.session_state.quote_categories],
-    on_change=None # change
+    default=[q.capitalize() for q in st.session_state.quote_categories]
 )
-# chosen_categories = for cat in options. 
-    st.write("You selected:", ", ".join(st.session_state.options_selected)) # in database create database of selected category
     rows = extract_data_from_tagged_db(st.session_state.options_selected)
     st.session_state.df = pd.DataFrame(rows, columns=["Quote", "Author", "Tags"])
 
 if quote_tags_or_without == "Only uncategorised quotes":
+    # allow user to select how many quotes are in the table
     amount = st.number_input("Enter amount of quotes in table", min_value=1, max_value=100, step=1, value=50)
+    # source quotes from quotes with tags db
     rows = extract_data_from_untagged_db(amount)
     st.session_state.df = pd.DataFrame(rows, columns=["Quote", "Author"])
 
 if quote_tags_or_without == "All quotes":
+    # extract and show all quotes from both databases
     rows = extract_data_from_tagged_db()
     rows += [(q, a, "") for q, a in extract_data_from_untagged_db(300)]
     st.session_state.df = pd.DataFrame(rows, columns=["Quote", "Author", "Tags"])
 
-st.dataframe(st.session_state.df)  #, hide_index=True)
+st.dataframe(st.session_state.df)
 
 if quote_tags_or_without == "Only categorised quotes":
+    # section for user to add tag to filter by in table of quotes
     st.header("Add a Tag")
     st.write("Is there a tag you think is missing and want to see more of?")
     st.write("Type a category - if it is an existing tag, you can use it to filter quotes above.")
@@ -81,13 +77,12 @@ if quote_tags_or_without == "Only categorised quotes":
             #check if not in category already
             requested_cat = user_requested_category.lower().strip()
             if requested_cat not in st.session_state.quote_categories:
-                print("NOT IN")
                 results, _ =scrape(f"tag/{user_requested_category.lower().strip()}/")
-                if len(results)>0:
+                if len(results)>0: # if scraping with tag returned results add user category to categories they can filter by
                     st.session_state.quote_categories.append(requested_cat)
                     add_tags_to_database(requested_cat)
                     st.success("Category added successfully! Please wait a few moments for page to update")
-                    time.sleep(4)
+                    time.sleep(4) # so user can see success message before page reloads
                     st.rerun()
                 else:
                     st.error("Sorry your category is not included as a tag in the website - please try another category")
@@ -100,8 +95,8 @@ if quote_tags_or_without == "Only categorised quotes":
     #  using plotly import to display chart
     tags_categories = st.session_state.df["Tags"].str.split(", ")
     amounts = tags_categories.explode().value_counts()
-    # amounts = st.session_state.df["Tags"]..value_counts()
-        # most common quote tag - using pandas import functions
+
+    # most common quote tag - using pandas import functions
     counts = st.session_state.df["Tags"].value_counts()
     st.write("Most common tag: ", amounts.idxmax()) # include in docs that won't change with pie chart changes
     st.write("Number of most common tag: ", str(amounts.max()))
@@ -110,13 +105,13 @@ if quote_tags_or_without == "Only categorised quotes":
 
 
 st.header("Search For Quotes by a Person")
-with st.form("search_author_form"):
+with st.form("search_person_form"):
     if "person" not in st.session_state:
         st.session_state.person =""
     st.text_input("Enter person's full name", key="person")
     search = st.form_submit_button("Find Quotes")
 if search:
-    # search quotes by author using API
+    # search quotes by person in both databases and show results
     results = search_author(st.session_state.person)
     if results:
         st.write("Showing quotes by ", st.session_state.person)
@@ -125,50 +120,54 @@ if search:
     else: 
         st.error(f"Sorry couldn't find any quote by {st.session_state.person}")   
 
-# Show title and description.
-# with st.form("chat_form"):
-#     st.title("💬 Chat with Quotes Guide Chatbot!")
-#     st.write("Tell the chatbot your current mood to generate a suitable quote:")
-#     prompt_bot = st.form_submit_button("Submit")
 
-#     openai_api_key = st.secrets["AZURE_OPENAI_API_KEY"]
-#     openai_api_endpoint = st.secrets["AZURE_OPENAI_ENDPOINT"]
+st.title("💬 Chat with Quotes Guide Chatbot!")
 
-#     if not openai_api_key:
-#         st.info("Please add your OpenAI API key to continue.", icon="🗝️")
-#     else:
-#         # create OpenAI client
-#         client = AzureOpenAI(
-#             api_key=openai_api_key,
-#             api_version="2024-12-01-preview",
-#             azure_endpoint=openai_api_endpoint
-#         )
+try:
+    openai_api_key = st.secrets["AZURE_OPENAI_API_KEY"]
+    openai_api_endpoint = st.secrets["AZURE_OPENAI_ENDPOINT"]
+    # create OpenAI client
+    client = AzureOpenAI(
+    api_key=openai_api_key,
+    api_version="2024-12-01-preview",
+    azure_endpoint=openai_api_endpoint
+)
 
-#         # store chat messages
-#         if "messages" not in st.session_state:
-#             st.session_state.messages = []
+except StreamlitSecretNotFoundError:
+    st.info("OpenAI API key not found - please make sure it is in secrets.toml", icon="🗝️")
+except KeyError:
+    st.info("API key missing in secrets.toml.", icon="🗝️")
+prompt= st.chat_input("Hi! What are you currently feeling?")
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+if prompt:
+    st.session_state.messages.append({"role": "user", "content": prompt})  # add message to chat history
+    with st.chat_message("user"):
+        st.markdown(prompt)
+    quote =""
+    down_words = ["sad", "tired", "down", "depressed", "upset", "unmotivated", "lost"]
+    happy_words =["happy", "excited", "calm", "relaxed" , "good", "great"]
+    for word in down_words:
+        if word in prompt.lower():
+            quote = extract_data_from_tagged_db(["hope"])[0]
+            break
+    if quote == "":
+        for word in happy_words:
+            if word in prompt.lower():
+                quote = extract_data_from_tagged_db(["happy"])[0]
+                break
+    if quote == "":
+        quote = extract_data_from_tagged_db(["inspirational"])[0]
+    # generate a response using the OpenAI API.
+    if client:
+        stream = client.chat.completions.create(
+            model=st.secrets["AZURE_OPENAI_MODEL"],
+            messages=[
+                    {"role": "user", "content": f"User feels: {prompt}. Give a supportive message and include this quote: {quote[0]} by {quote[1]}"}],
+            stream=True
+        )
+    # stream the response to the chat using `st.write_stream` and then store it in session state.
+    with st.chat_message("assistant"):
+        response = st.write_stream(stream)
 
-#         # display the existing chat messages
-#         for message in st.session_state.messages:
-#             with st.chat_message(message["role"]):
-#                 st.markdown(message["content"])
-
-#         # create a chat input field to allow the user to enter a message
-#         if prompt_bot:
-#             if prompt := st.chat_input("Hi! What are you currently feeling?"):
-#                 # store and display current prompt
-#                 with st.chat_message("user"):
-#                     st.markdown(prompt)
-#                 st.session_state.messages.append({"role": "user", "content": prompt})  # add message to chat history
-
-#                 # generate a response using the OpenAI API.
-#                 stream = client.chat.completions.create(
-#                     model=st.secrets["AZURE_OPENAI_MODEL"],
-#                     messages=[{"role": "system", "content": "You are a friendly chatbot to validate people's feelings and provide a quote"},
-#                             {"role": "user", "content": prompt}],
-#                     stream=True
-#                 )
-
-#                 # stream the response to the chat using `st.write_stream` and then store it in session state.
-#                 with st.chat_message("assistant"):
-#                     response = st.write_stream(stream)
+    st.session_state.messages.append({"role": "assistant", "content": response})
