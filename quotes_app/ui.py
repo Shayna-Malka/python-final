@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as pe
-from database import create_database, add_tags_to_database, extract_data_from_db, add_data_to_database
+from database import create_databases, add_tags_to_database, extract_data_from_tagged_db, add_data_to_databases, extract_data_from_untagged_db
 from web_scraping import scrape
 from api import api_request_random_quote
 import time
@@ -12,9 +12,9 @@ st.set_page_config(layout="wide")
 if "quote_categories" not in st.session_state: 
     # default categories for quotes - user can add to them
     st.session_state.quote_categories = ["truth","inspirational", "life", "friendship", "courage"]
-create_database()
+create_databases()
 add_tags_to_database(st.session_state.quote_categories)
-add_data_to_database()
+add_data_to_databases()
 
 if "random_quote" not in st.session_state:
     st.session_state.random_quote = api_request_random_quote()
@@ -35,20 +35,29 @@ with st.form("display_random_quote"):
 # if "df" not in st.session_state:
 
 
-st.session_state.options_selected = st.multiselect(
+st.subheader("Quotes")
+quote_tags_or_without = st.radio(
+    "Select quotes categorisation",
+    ["Only categorised quotes", "Only uncategorised quotes", "All quotes"]
+)
+if quote_tags_or_without == "Only categorised quotes":
+    # st.session_state.df = pd.DataFrame(rows, columns=["Quote", "Author", "Tags"])
+    st.session_state.options_selected = st.multiselect(
     "Select quote categories",
     [q.capitalize() for q in st.session_state.quote_categories],
     default=[q.capitalize() for q in st.session_state.quote_categories],
     on_change=None # change
 )
 # chosen_categories = for cat in options. 
-st.write("You selected:", ", ".join(st.session_state.options_selected)) # in database create database of selected category
-rows = extract_data_from_db(st.session_state.options_selected)
-st.subheader("Quotes")
-st.session_state.df = pd.DataFrame(rows, columns=["Quote", "Author", "Tags"])
+    st.write("You selected:", ", ".join(st.session_state.options_selected)) # in database create database of selected category
+    rows = extract_data_from_tagged_db(st.session_state.options_selected)
+    st.session_state.df = pd.DataFrame(rows, columns=["Quote", "Author", "Tags"])
+
+if quote_tags_or_without == "Only uncategorised quotes":
+    rows = extract_data_from_untagged_db()
+    st.session_state.df = pd.DataFrame(rows, columns=["Quote", "Author"])
+
 st.dataframe(st.session_state.df)  #, hide_index=True)
-
-
 st.header("Add a Tag")
 st.write("Is there a tag you think is missing and want to see more of?")
 with st.form("add_tags_form"):
