@@ -7,7 +7,7 @@ from api import api_request_random_quote
 import time
 # from openai import OpenAI
 # from openai import AzureOpenAI
-
+# explain in readme why tag request is created - bec if refer to chart a lot of clutter so chose a few
 st.set_page_config(layout="wide")
 if "quote_categories" not in st.session_state: 
     # default categories for quotes - user can add to them
@@ -38,7 +38,7 @@ with st.form("display_random_quote"):
 st.subheader("Quotes")
 quote_tags_or_without = st.radio(
     "Select quotes categorisation",
-    ["Only categorised quotes", "Only uncategorised quotes", "All quotes"]
+    ["Only categorised quotes", "Only uncategorised quotes", "Both"]
 )
 if quote_tags_or_without == "Only categorised quotes":
     # st.session_state.df = pd.DataFrame(rows, columns=["Quote", "Author", "Tags"])
@@ -57,54 +57,61 @@ if quote_tags_or_without == "Only uncategorised quotes":
     rows = extract_data_from_untagged_db()
     st.session_state.df = pd.DataFrame(rows, columns=["Quote", "Author"])
 
+if quote_tags_or_without == "Both":
+    rows = extract_data_from_tagged_db()
+    rows += [(q, a, "") for q, a in extract_data_from_untagged_db()]
+    st.session_state.df = pd.DataFrame(rows, columns=["Quote", "Author", "Tags"])
+
 st.dataframe(st.session_state.df)  #, hide_index=True)
-st.header("Add a Tag")
-st.write("Is there a tag you think is missing and want to see more of?")
-with st.form("add_tags_form"):
-    user_requested_category= st.text_input(
-    "Request a quote category",
-    placeholder="e.g. comedy, failure, hope",
-    help="Type a category. If it exists, you can use it to filter quotes in above table.")
-    add = st.form_submit_button("Add Category")  # in readme: add that if category is not a lot and might be connected to other category then might not refelect change in table
-    if add:
-        #check if not in category already
-        requested_cat = user_requested_category.lower().strip()
-        if requested_cat not in st.session_state.quote_categories:
-            print("NOT IN")
-            results, _ =scrape(f"tag/{user_requested_category.lower().strip()}/")
-            if len(results)>0:
-                st.session_state.quote_categories.append(requested_cat)
-                add_tags_to_database(requested_cat)
-                st.success("Category added successfully! Please wait a few moments for page to update")
-                time.sleep(4)
-                st.rerun()
+
+if quote_tags_or_without == "Only categorised quotes":
+    st.header("Add a Tag")
+    st.write("Is there a tag you think is missing and want to see more of?")
+    with st.form("add_tags_form"):
+        user_requested_category= st.text_input(
+        "Request a quote category",
+        placeholder="e.g. comedy, failure, hope",
+        help="Type a category. If it exists, you can use it to filter quotes in above table.")
+        add = st.form_submit_button("Add Category")  # in readme: add that if category is not a lot and might be connected to other category then might not refelect change in table
+        if add:
+            #check if not in category already
+            requested_cat = user_requested_category.lower().strip()
+            if requested_cat not in st.session_state.quote_categories:
+                print("NOT IN")
+                results, _ =scrape(f"tag/{user_requested_category.lower().strip()}/")
+                if len(results)>0:
+                    st.session_state.quote_categories.append(requested_cat)
+                    add_tags_to_database(requested_cat)
+                    st.success("Category added successfully! Please wait a few moments for page to update")
+                    time.sleep(4)
+                    st.rerun()
+                else:
+                    st.error("Sorry your category is not included as a tag in the website - please try another category")
             else:
-                st.error("Sorry your category is not included as a tag in the website - please try another category")
-        else:
-            st.error("Category is already included - please choose a a category that is not listed in red above table with quotes") 
+                st.error("Category is already included - please choose a a category that is not listed in red above table with quotes") 
 
-
-st.header("Tag Distribution")
-st.subheader("Current Distribution")
-#  using plotly import to display chart
-tags_categories = st.session_state.df["Tags"].str.split(", ")
-amounts = tags_categories.explode().value_counts()
-# amounts = st.session_state.df["Tags"]..value_counts()
-chart = pe.pie(names=amounts.index, values=amounts.values)
-st.plotly_chart(chart)
-# most common quote tag - using pandas import functions
-counts = st.session_state.df["Tags"].value_counts()
-st.write("Most common tag: ", amounts.idxmax()) # include in docs that won't change with pie chart changes
-st.write("Number of most common tag: ", str(amounts.max()))
+    st.header("Tag Distribution")
+    st.subheader("Current Distribution")
+    #  using plotly import to display chart
+    tags_categories = st.session_state.df["Tags"].str.split(", ")
+    amounts = tags_categories.explode().value_counts()
+    # amounts = st.session_state.df["Tags"]..value_counts()
+    chart = pe.pie(names=amounts.index, values=amounts.values)
+    st.plotly_chart(chart)
+    # most common quote tag - using pandas import functions
+    counts = st.session_state.df["Tags"].value_counts()
+    st.write("Most common tag: ", amounts.idxmax()) # include in docs that won't change with pie chart changes
+    st.write("Number of most common tag: ", str(amounts.max()))
 
 st.header("Search For Quotes by an Author")
 with st.form("search_author_form"):
     st.text_input("Author Name and Surname", key="author")
     search = st.form_submit_button("Find Quotes By Author")
-    # if submitted:
+    if submitted:
         # search quotes by author using API
+        result = 
         # if not empty results:
-            # st.session_state.df2 = pd.DataFrame(results, columns=["Quote", "Author", "Tags"])
+            # st.session_state.df2 = pd.DataFrame(results, columns=["Quote", "Author"])
             # st.dataframe(st.session_state.df2, hide_index=True)
         # else 
             # st.error("Sorry couldn't find any quote by your author - please try another author")   
