@@ -1,14 +1,16 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as pe
-from database import create_databases, add_tags_to_database, extract_data_from_tagged_db, add_data_to_databases, extract_data_from_untagged_db
+from database import create_databases, add_tags_to_database, extract_data_from_tagged_db, add_data_to_databases, extract_data_from_untagged_db, search_author
 from web_scraping import scrape
 from api import api_request_random_quote
 import time
 # from openai import OpenAI
 # from openai import AzureOpenAI
+# explain in readme how table does not show all items in database - just a few
 # explain in readme why tag request is created - bec if refer to chart a lot of clutter so chose a few
 st.set_page_config(layout="wide")
+# st.subheader("Loading...")
 if "quote_categories" not in st.session_state: 
     # default categories for quotes - user can add to them
     st.session_state.quote_categories = ["truth","inspirational", "life", "friendship", "courage"]
@@ -38,7 +40,7 @@ with st.form("display_random_quote"):
 st.subheader("Quotes")
 quote_tags_or_without = st.radio(
     "Select quotes categorisation",
-    ["Only categorised quotes", "Only uncategorised quotes", "Both"]
+    ["Only categorised quotes", "Only uncategorised quotes", "All quotes"]
 )
 if quote_tags_or_without == "Only categorised quotes":
     # st.session_state.df = pd.DataFrame(rows, columns=["Quote", "Author", "Tags"])
@@ -54,12 +56,13 @@ if quote_tags_or_without == "Only categorised quotes":
     st.session_state.df = pd.DataFrame(rows, columns=["Quote", "Author", "Tags"])
 
 if quote_tags_or_without == "Only uncategorised quotes":
-    rows = extract_data_from_untagged_db()
+    amount = st.number_input("Enter amount of quotes in table", min_value=1, max_value=100, step=1, value=50)
+    rows = extract_data_from_untagged_db(amount)
     st.session_state.df = pd.DataFrame(rows, columns=["Quote", "Author"])
 
-if quote_tags_or_without == "Both":
+if quote_tags_or_without == "All quotes":
     rows = extract_data_from_tagged_db()
-    rows += [(q, a, "") for q, a in extract_data_from_untagged_db()]
+    rows += [(q, a, "") for q, a in extract_data_from_untagged_db(300)]
     st.session_state.df = pd.DataFrame(rows, columns=["Quote", "Author", "Tags"])
 
 st.dataframe(st.session_state.df)  #, hide_index=True)
@@ -67,11 +70,12 @@ st.dataframe(st.session_state.df)  #, hide_index=True)
 if quote_tags_or_without == "Only categorised quotes":
     st.header("Add a Tag")
     st.write("Is there a tag you think is missing and want to see more of?")
+    st.write("Type a category - if it is an existing tag, you can use it to filter quotes above.")
     with st.form("add_tags_form"):
         user_requested_category= st.text_input(
         "Request a quote category",
         placeholder="e.g. comedy, failure, hope",
-        help="Type a category. If it exists, you can use it to filter quotes in above table.")
+        help="If the category is listed in the website used to source the categorised quotes, it will be added to filter options for table above.")
         add = st.form_submit_button("Add Category")  # in readme: add that if category is not a lot and might be connected to other category then might not refelect change in table
         if add:
             #check if not in category already
@@ -92,29 +96,34 @@ if quote_tags_or_without == "Only categorised quotes":
 
     st.header("Tag Distribution")
     st.subheader("Current Distribution")
+
     #  using plotly import to display chart
     tags_categories = st.session_state.df["Tags"].str.split(", ")
     amounts = tags_categories.explode().value_counts()
     # amounts = st.session_state.df["Tags"]..value_counts()
-    chart = pe.pie(names=amounts.index, values=amounts.values)
-    st.plotly_chart(chart)
-    # most common quote tag - using pandas import functions
+        # most common quote tag - using pandas import functions
     counts = st.session_state.df["Tags"].value_counts()
     st.write("Most common tag: ", amounts.idxmax()) # include in docs that won't change with pie chart changes
     st.write("Number of most common tag: ", str(amounts.max()))
+    chart = pe.pie(names=amounts.index, values=amounts.values)
+    st.plotly_chart(chart)
 
-st.header("Search For Quotes by an Author")
+
+st.header("Search For Quotes by a Person")
 with st.form("search_author_form"):
-    st.text_input("Author Name and Surname", key="author")
-    search = st.form_submit_button("Find Quotes By Author")
-    if submitted:
-        # search quotes by author using API
-        result = 
-        # if not empty results:
-            # st.session_state.df2 = pd.DataFrame(results, columns=["Quote", "Author"])
-            # st.dataframe(st.session_state.df2, hide_index=True)
-        # else 
-            # st.error("Sorry couldn't find any quote by your author - please try another author")   
+    if "person" not in st.session_state:
+        st.session_state.person =""
+    st.text_input("Enter person's full name", key="person")
+    search = st.form_submit_button("Find Quotes")
+if search:
+    # search quotes by author using API
+    results = search_author(st.session_state.person)
+    if results:
+        st.write("Showing quotes by ", st.session_state.person)
+        st.session_state.df2 = pd.DataFrame(results, columns=["Quote"])
+        st.dataframe(st.session_state.df2, hide_index=True)
+    else: 
+        st.error(f"Sorry couldn't find any quote by {st.session_state.person}")   
 
 # Show title and description.
 # with st.form("chat_form"):

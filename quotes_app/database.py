@@ -49,8 +49,21 @@ def extract_data_from_untagged_db(limit=50):
 
     return cur.fetchall()
 
+def search_author(author):
+    results=[]
+    with sqlite3.connect("quotes_with_tags.db") as conn:
+        cur = conn.cursor()  # create cursor
+        cur.execute(f"SELECT quote FROM quotes_with_tags WHERE LOWER(author) = LOWER(?)",(author,))
+        results.extend(cur.fetchall())
+    with sqlite3.connect("quotes_without_tags.db") as conn:
+        cur = conn.cursor()  # create cursor
+        cur.execute(f"SELECT quote FROM quotes_without_tags WHERE LOWER(author) = LOWER(?)",(author,))
+        results.extend(cur.fetchall())
+    return results
 
-def add_data_to_databases(): # added s at end
+
+
+def add_data_to_databases():
         quotes_with_tags =[]
         with sqlite3.connect("quotes_with_tags.db") as conn:  # connect to database and automatically close connection
         # cur = conn.cursor()  # create cursor
