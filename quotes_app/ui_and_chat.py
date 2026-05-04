@@ -121,53 +121,65 @@ if search:
         st.error(f"Sorry couldn't find any quote by {st.session_state.person}")   
 
 
-st.title("💬 Chat with Quotes Guide Chatbot!")
 
-try:
+# Show title and description.
+st.title("💬 Chat with Quotes Guide Chatbot!")
+st.write("Tell the chatbot your current mood to generate a suitable quote:")
+
     openai_api_key = st.secrets["AZURE_OPENAI_API_KEY"]
     openai_api_endpoint = st.secrets["AZURE_OPENAI_ENDPOINT"]
-    # create OpenAI client
-    client = AzureOpenAI(
-    api_key=openai_api_key,
-    api_version="2024-12-01-preview",
-    azure_endpoint=openai_api_endpoint
-)
 
-except StreamlitSecretNotFoundError:
-    st.info("OpenAI API key not found - please make sure it is in secrets.toml", icon="🗝️")
-except KeyError:
-    st.info("API key missing in secrets.toml.", icon="🗝️")
-prompt= st.chat_input("Hi! What are you currently feeling?")
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-if prompt:
-    st.session_state.messages.append({"role": "user", "content": prompt})  # add message to chat history
-    with st.chat_message("user"):
-        st.markdown(prompt)
-    quote =""
-    down_words = ["sad", "tired", "down", "depressed", "upset", "unmotivated", "lost"]
-    happy_words =["happy", "excited", "calm", "relaxed" , "good", "great"]
-    for word in down_words:
-        if word in prompt.lower():
-            quote = extract_data_from_tagged_db(["hope"])[0]
-            break
-    if quote == "":
-        for word in happy_words:
-            if word in prompt.lower():
-                quote = extract_data_from_tagged_db(["happy"])[0]
-                break
-    if quote == "":
-        quote = extract_data_from_tagged_db(["inspirational"])[0]
-    # generate a response using the OpenAI API.
-    if client:
-        stream = client.chat.completions.create(
-            model=st.secrets["AZURE_OPENAI_MODEL"],
-            messages=[
-                    {"role": "user", "content": f"User feels: {prompt}. Give a supportive message and include this quote: {quote[0]} by {quote[1]}"}],
-            stream=True
+    if not openai_api_key:
+        st.info("Please add your OpenAI API key to continue.", icon="🗝️")
+
+    else:
+        # create OpenAI client
+        client = AzureOpenAI(
+            api_key=openai_api_key,
+            api_version="2024-12-01-preview",
+            azure_endpoint=openai_api_endpoint
         )
-    # stream the response to the chat using `st.write_stream` and then store it in session state.
-    with st.chat_message("assistant"):
-        response = st.write_stream(stream)
 
-    st.session_state.messages.append({"role": "assistant", "content": response})
+        # store chat messages
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
+
+        # display the existing chat messages
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+
+        # create a chat input field to allow the user to enter a message
+            if prompt := st.chat_input("Hi! What are you currently feeling?"):
+                # store and display current prompt
+                with st.chat_message("user"):
+                    st.markdown(prompt)
+                st.session_state.messages.append({"role": "user", "content": prompt})  # add message to chat history
+            
+                down_words = ["sad", "tired", "down", "depressed", "upset", "unmotivated", "lost"]
+                happy_words =["happy", "excited", "calm", "relaxed" , "good", "great"]
+                
+                # identify user's mood and gextract relevant quote
+                for word in down_words:
+                    if word in prompt.lower():
+                        quote = extract_data_from_tagged_db(["hope"])[0]
+                        break
+                if quote == "":
+                    for word in happy_words:
+                        if word in prompt.lower():
+                            quote = extract_data_from_tagged_db(["happy"])[0]
+                            break
+                if quote == "":
+                    quote = extract_data_from_tagged_db(["inspirational"])[0]
+
+                # generate a response using the OpenAI API.
+                stream = client.chat.completions.create(
+                    model=st.secrets["AZURE_OPENAI_MODEL"],
+                    messages=[{"role": "system", "content": "You are a friendly chatbot to validate people's feelings with quote {quote}"},
+                            {"role": "user", "content": prompt}],
+                    stream=True
+                )
+
+                # stream the response to the chat using `st.write_stream` and then store it in session state.
+                with st.chat_message("assistant"):
+                    response = st.write_stream(stream)
