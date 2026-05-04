@@ -149,7 +149,7 @@ else:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # create a chat input field to allow the user to enter a message
+        # create a chat input field to allow the user to enter a message
         if prompt := st.chat_input("Hi! What are you currently feeling?"):
             # store and display current prompt
             with st.chat_message("user"):
@@ -175,11 +175,12 @@ else:
             # generate a response using the OpenAI API.
             stream = client.chat.completions.create(
                 model=st.secrets["AZURE_OPENAI_MODEL"],
-                messages=[{"role": "system", "content": "You are a friendly chatbot to validate people's feelings with quote {quote}"},
+                messages=[{"role": "system", "content": f"You are a friendly chatbot to validate people's feelings with quote {quote[0]} by {quote[1]}"},
                         {"role": "user", "content": prompt}],
                 stream=True
             )
 
             # stream the response to the chat using `st.write_stream` and then store it in session state.
             with st.chat_message("assistant"):
-                    response = st.write_stream(stream)
+                response = st.write_stream(stream)
+            st.session_state.messages.append({"role": "assistant", "content": response})
